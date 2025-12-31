@@ -4,11 +4,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> } // <-- Note the Promise wrapper
 ) {
-  const id = params.id;
+  const { id } = await context.params; // unwrap the Promise
 
-  // Fetch the paste by ID
   const paste = await prisma.paste.findUnique({
     where: { id }
   });
@@ -17,15 +16,12 @@ export async function GET(
 
   const currentTime = now(req);
 
-  // Check for expiration
   if (paste.expiresAt && currentTime > paste.expiresAt)
     return NextResponse.json({}, { status: 404 });
 
-  // Check for max views
   if (paste.maxViews && paste.viewCount >= paste.maxViews)
     return NextResponse.json({}, { status: 404 });
 
-  // Increment view count
   const updated = await prisma.paste.update({
     where: { id: paste.id },
     data: { viewCount: { increment: 1 } }
